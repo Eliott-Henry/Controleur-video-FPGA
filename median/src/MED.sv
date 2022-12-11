@@ -7,7 +7,6 @@ module MED #(parameter WIDTH=8, parameter NUMBER=9)
 
 logic[NUMBER-1:0][WIDTH-1:0] R;
 logic[WIDTH-1:0] MIN, MAX;
-logic[WIDTH-1:0] A, B;
 MCE #(.WIDTH(WIDTH)) MCE1 (.A(R[NUMBER-1]), .B(R[NUMBER-2]), .MIN(MIN), .MAX(MAX));
 integer i;
 assign DO = R[NUMBER-1];
