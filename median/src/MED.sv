@@ -7,8 +7,9 @@ module MED #(parameter WIDTH=8, parameter NUMBER=9)
 
 logic[NUMBER-1:0][WIDTH-1:0] R;
 logic[WIDTH-1:0] MIN, MAX;
-MCE #(.WIDTH(WIDTH)) MCE1 (.A(R[NUMBER-1]), .B(R[NUMBER-2]), .MIN(MIN), .MAX(MAX));
 integer i;
+
+MCE #(.WIDTH(WIDTH)) MCE1 (.A(R[NUMBER-1]), .B(R[NUMBER-2]), .MIN(MIN), .MAX(MAX));
 assign DO = R[NUMBER-1];
 
 always_ff @(posedge CLK)
