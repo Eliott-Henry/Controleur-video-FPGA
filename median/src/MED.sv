@@ -21,7 +21,7 @@ begin
         R[NUMBER-1] <= MAX;
 
     // les registres à décalage de R1 à R7
-    for(i = 0; i<=NUMBER-2; i++)
+    for(i = 0; i<NUMBER-2; i++)
     begin
         R[i+1] <= R[i];
     end
