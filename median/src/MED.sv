@@ -5,7 +5,7 @@ module MED #(parameter WIDTH=8, parameter NUMBER=9)
         input CLK,
         output [WIDTH-1:0] DO);
 
-logic[NUMBER-1:0][WIDTH-1:0] R;
+logic[WIDTH-1:0] R[0:NUMBER-1];
 logic[WIDTH-1:0] MIN, MAX;
 integer i;
 
