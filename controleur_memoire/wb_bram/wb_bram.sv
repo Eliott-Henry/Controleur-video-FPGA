@@ -11,23 +11,46 @@ module wb_bram #(parameter mem_adr_width = 11) (
       );
       // a vous de jouer a partir d'ici
 
+localparam SIZE = 2 ** mem_adr_width;
+logic [31:0] mem [0:SIZE];
+
+wire ack_w;
+logic ack_r;
+
 assign wb_s.err = 0;
 assign wb_s.rty = 0;
+
+assign wb_s.ack = ack_w | ack_r;
+assign ack_w = wb_s.we & wb_s.stb;
+
+
+// ack_r est synchrone
+
+// ack écriture de manière combinatoire
+// ack lecture aura un cycle de retard par rapport à la requête
+
 // il y a d'autres assign qu'on peut faire (voir photo tableau)
+
 // quel octet modifier ? sel ou deux bits poids faible de l'adresse
 // mot = 4 octets [ | | | ] 
-// et sel sur 4b  [ | | | ] donc on sait quels octets prendre
+// et sel sur 4   [ | | | ] donc on sait quels octets prendre
 
-always_ff @(posedge wb_s.clk) 
+always_ff @(posedge wb_s.clk)
+begin      
+      if(wb_s.rst) ack_r <= 0;
+      else ack_r = ~wb_s.we & wb_s.stb;
+end
+
+always_ff  @(posedge wb_s.clk)
 begin
-      
+      if(wb_s.we) mem[wb_s.adr] <= wb_s.ms & wb_s.sel;
+      wb_s.sm <= mem[wb_s.adr] & web_s.sel;  // rajouter ack_w ? ça doit être synchrone ?
 end
 
 endmodule
 
 /*
-
-Pour une ecriture : ACK au même cycle pour une écriture (combinatoirement) ack = strb
+Pour une ecriture : ACK au même cycle pour une écriture (combinatoirement) ack = stb
 Pour une lecture : quand STB, on reçoit une adresse, on produit une donnée mais elle ne sort qu'au cycle suivant (ack) (séquentiellement) (ack = strb en retard de 1 cycle)
 On va voir ack en cas de read et write différents
 
