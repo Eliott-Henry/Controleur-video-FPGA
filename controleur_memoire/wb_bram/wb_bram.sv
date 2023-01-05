@@ -5,6 +5,9 @@
 // Le paramètre mem_adr_width doit permettre de déterminer le nombre 
 // de mots de la mémoire : (2048 pour mem_adr_width=11)
 
+
+// La simulation montre que la lecture des cases mémoires n'est pas bonne. Soit on ne retourne pas la case au bon moment, soit on a mal écrit dans la mémoire
+
 module wb_bram #(parameter mem_adr_width = 11) (
       // Wishbone interface
       wshb_if.slave wb_s
@@ -17,12 +20,8 @@ logic [31:0] mem [0:SIZE];
 wire ack_w;
 logic ack_r;
 
-assign wb_s.err = 0;
-assign wb_s.rty = 0;
-
 assign wb_s.ack = ack_w | ack_r;
 assign ack_w = wb_s.we & wb_s.stb;
-
 
 // ack_r est synchrone
 
@@ -38,15 +37,16 @@ assign ack_w = wb_s.we & wb_s.stb;
 always_ff @(posedge wb_s.clk)
 begin      
       if(wb_s.rst) ack_r <= 0;
-      else ack_r = ~wb_s.we & wb_s.stb;
+      else ack_r <= ~wb_s.we & wb_s.stb;
 end
 
 always_ff  @(posedge wb_s.clk)
 begin
-      if(wb_s.we) mem[wb_s.adr] <= wb_s.ms & wb_s.sel;
-      wb_s.sm <= mem[wb_s.adr] & web_s.sel;  // rajouter ack_w ? ça doit être synchrone ?
+      if(wb_s.we) mem[wb_s.adr] <= wb_s.dat_ms & wb_s.sel;  // rajouter ack_w ? ça doit être synchrone ?
 end
 
+always_ff @(posedge wb_s.clk)
+wb_s.dat_sm <= mem[wb_s.adr] & wb_s.sel; 
 endmodule
 
 /*
