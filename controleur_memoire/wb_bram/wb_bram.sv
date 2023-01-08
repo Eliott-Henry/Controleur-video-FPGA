@@ -18,7 +18,10 @@ logic [3:0][7:0] mem [0:SIZE-1];
 logic [mem_adr_width+1:2] adr;
 
 logic ack_w;
-logic ack_r; 
+logic ack_r;
+logic ack_r_classic; 
+logic ack_r_pipeline;
+logic init;
 
 assign adr = wb_s.adr[mem_adr_width+1:2];
 
@@ -28,10 +31,19 @@ assign ack_w = wb_s.we & wb_s.stb;
 
 always_ff @(posedge wb_s.clk)
 begin      
-      if(wb_s.rst) ack_r <= 0;
-      else ack_r <= ~wb_s.we & wb_s.stb & ~ack_r;
+      if(wb_s.rst)
+      begin
+            ack_r_classic <= 0;
+            ack_r_pipeline <= 0;
+      end
+      else 
+      begin 
+            ack_r_classic <= ~wb_s.we & wb_s.stb & ~ack_r_classic;
+            ack_r_pipeline <= ~wb_s.we & wb_s.stb & (wb_s.cti == 3'b010);
+      end
 end
 
+assign ack_r = ack_r_classic | ack_r_pipeline;
 assign wb_s.ack = ack_w | ack_r;
 
 // ECRITURE
@@ -49,8 +61,43 @@ end
 
 // LECTURE
 
+// Classic mode
 always_ff@(posedge wb_s.clk) begin
-      if(wb_s.stb & ~wb_s.we & ~ack_r) wb_s.dat_sm <= mem[adr];
+      if(wb_s.stb & ~wb_s.we & ~ack_r_classic) wb_s.dat_sm <= mem[adr];
 end
+
+// Pipeline mode
+always_ff@(posedge wb_s.clk) begin
+      if(wb_s.stb & ~wb_s.we & (wb_s.cti == 3'b010)) begin
+            if(init) wb_s.dat_sm <= mem[adr];
+            else wb_s.dat_sm <= mem[adr + 1];
+      end
+end
+
+always_comb begin
+      init = wb_s.stb & ~wb_s.we & (wb_s.cti == 3'b010) & ~ack_r_pipeline;
+end
+
+/*
+
+always_ff@(posedge wb_s.clk) begin
+      if(wb_s.stb & ~wb_s.we & (wb_s.cti == 0'b010))
+      begin
+            if(init) 
+            begin
+                  wb_s.dat_sm <= mem[adr];
+                  adr_pipeline <= adr + 1;
+            end
+            else 
+            begin
+                  wb_s.dat_sm <= mem[adr_pipeline];
+                  adr_pipeline <= adr_pipeline + 1;
+            end
+      end
+end
+
+always_comb begin
+      init = wb_s.stb & wb_s.we & (wb_s.cti == 3'b010) & ~ack_r_pipeline;
+end*/
 
 endmodule
