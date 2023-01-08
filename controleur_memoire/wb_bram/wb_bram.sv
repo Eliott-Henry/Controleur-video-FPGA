@@ -13,16 +13,16 @@ module wb_bram #(parameter mem_adr_width = 11) (
       wshb_if.slave wb_s
       );
 
-//localparam SIZE = 2 ** mem_adr_width;
-logic [3:0][7:0] mem [0:2**mem_adr_width -1];
-logic [mem_adr_width+1:2] adr; // enlever celui là ?
+localparam SIZE = 2 ** mem_adr_width;
+logic [3:0][7:0] mem [0:SIZE-1];
+logic [mem_adr_width+1:2] adr;
 
-logic ack_w; // mettre en logic ?
+logic ack_w;
 logic ack_r; 
 
 assign adr = wb_s.adr[mem_adr_width+1:2];
 
-// ACK
+// ACKs
 
 assign ack_w = wb_s.we & wb_s.stb;
 
@@ -38,7 +38,7 @@ assign wb_s.ack = ack_w | ack_r;
 
 always_ff  @(posedge wb_s.clk)
 begin
-      if(ack_w) // En fait l'acquittement assure plutôt qu'on a bine écrit mais ça revient au même
+      if(wb_s.stb & wb_s.we)
       begin
             if(wb_s.sel[0]) mem[adr][0] <= wb_s.dat_ms[7:0];
             if(wb_s.sel[1]) mem[adr][1] <= wb_s.dat_ms[15:8];
@@ -48,17 +48,9 @@ begin
 end
 
 // LECTURE
-// Ici il a pas fait ça il a juste mis la mémoire entière dans dat_sm
-// on présente la mémoire que si on est dans le cas de la lecture
 
-always_comb begin
-      if(ack_r)
-      begin      
-            if(wb_s.sel[0]) wb_s.dat_sm[7:0] <= mem[adr][0];
-            if(wb_s.sel[1]) wb_s.dat_sm[15:8] <= mem[adr][1];
-            if(wb_s.sel[2]) wb_s.dat_sm[23:16] <= mem[adr][2];
-            if(wb_s.sel[3]) wb_s.dat_sm[31:24] <= mem[adr][3];
-      end
+always_ff@(posedge wb_s.clk) begin
+      if(wb_s.stb & ~wb_s.we & ~ack_r) wb_s.dat_sm <= mem[adr];
 end
 
 endmodule
