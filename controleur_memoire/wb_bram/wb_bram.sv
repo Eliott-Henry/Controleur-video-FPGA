@@ -12,47 +12,53 @@ module wb_bram #(parameter mem_adr_width = 11) (
       // Wishbone interface
       wshb_if.slave wb_s
       );
-      // a vous de jouer a partir d'ici
 
-localparam SIZE = 2 ** mem_adr_width;
-logic [31:0] mem [0:SIZE];
+//localparam SIZE = 2 ** mem_adr_width;
+logic [3:0][7:0] mem [0:2**mem_adr_width -1];
+logic [mem_adr_width+1:2] adr; // enlever celui là ?
 
-wire ack_w;
-logic ack_r;
+logic ack_w; // mettre en logic ?
+logic ack_r; 
 
-assign wb_s.ack = ack_w | ack_r;
+assign adr = wb_s.adr[mem_adr_width+1:2];
+
+// ACK
+
 assign ack_w = wb_s.we & wb_s.stb;
-
-// ack_r est synchrone
-
-// ack écriture de manière combinatoire
-// ack lecture aura un cycle de retard par rapport à la requête
-
-// il y a d'autres assign qu'on peut faire (voir photo tableau)
-
-// quel octet modifier ? sel ou deux bits poids faible de l'adresse
-// mot = 4 octets [ | | | ] 
-// et sel sur 4   [ | | | ] donc on sait quels octets prendre
 
 always_ff @(posedge wb_s.clk)
 begin      
       if(wb_s.rst) ack_r <= 0;
-      else ack_r <= ~wb_s.we & wb_s.stb;
+      else ack_r <= ~wb_s.we & wb_s.stb & ~ack_r;
 end
+
+assign wb_s.ack = ack_w | ack_r;
+
+// ECRITURE
 
 always_ff  @(posedge wb_s.clk)
 begin
-      if(wb_s.we) mem[wb_s.adr] <= wb_s.dat_ms & wb_s.sel;  // rajouter ack_w ? ça doit être synchrone ?
+      if(ack_w) // En fait l'acquittement assure plutôt qu'on a bine écrit mais ça revient au même
+      begin
+            if(wb_s.sel[0]) mem[adr][0] <= wb_s.dat_ms[7:0];
+            if(wb_s.sel[1]) mem[adr][1] <= wb_s.dat_ms[15:8];
+            if(wb_s.sel[2]) mem[adr][2] <= wb_s.dat_ms[23:16];
+            if(wb_s.sel[3]) mem[adr][3] <= wb_s.dat_ms[31:24];
+      end
 end
 
-always_ff @(posedge wb_s.clk)
-wb_s.dat_sm <= mem[wb_s.adr] & wb_s.sel; 
+// LECTURE
+// Ici il a pas fait ça il a juste mis la mémoire entière dans dat_sm
+// on présente la mémoire que si on est dans le cas de la lecture
+
+always_comb begin
+      if(ack_r)
+      begin      
+            if(wb_s.sel[0]) wb_s.dat_sm[7:0] <= mem[adr][0];
+            if(wb_s.sel[1]) wb_s.dat_sm[15:8] <= mem[adr][1];
+            if(wb_s.sel[2]) wb_s.dat_sm[23:16] <= mem[adr][2];
+            if(wb_s.sel[3]) wb_s.dat_sm[31:24] <= mem[adr][3];
+      end
+end
+
 endmodule
-
-/*
-Pour une ecriture : ACK au même cycle pour une écriture (combinatoirement) ack = stb
-Pour une lecture : quand STB, on reçoit une adresse, on produit une donnée mais elle ne sort qu'au cycle suivant (ack) (séquentiellement) (ack = strb en retard de 1 cycle)
-On va voir ack en cas de read et write différents
-
-Essayer de séparer les deux (mémoire et contrôle : ctrl génère juste ack au bon moment)
-*/
