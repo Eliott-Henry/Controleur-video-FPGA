@@ -1,4 +1,10 @@
 `default_nettype none
+`define SIMULATION
+`ifdef SIMULATION
+  localparam hcmpt=100;
+`else
+  localparam hcmpt= 100000000;
+`endif
 
 module Top (
     // Les signaux externes de la partie FPGA
@@ -6,7 +12,7 @@ module Top (
 	input  wire  [1:0]	KEY,
 	output logic [7:0]	LED,
 	input  wire	 [3:0]	SW,
-    // Les signaux du support matériel son regroupés dans une interface
+    // Les signaux du support matériel sont regroupés dans une interface
     hws_if.master       hws_ifm
 );
 
@@ -16,9 +22,14 @@ module Top (
   wire        sys_rst;   // Le signal de reset du système
   wire        sys_clk;   // L'horloge système a 100Mhz
   wire        pixel_clk; // L'horloge de la video 32 Mhz
+  logic        pixel_rst;
+  logic[19:0] count;
+  logic[19:0] count_pix;
+  logic Q;
+
 
 //=======================================================
-//  La PLL pour la génération des horloges
+//  La PLL pour la génération des horloges == Phase-Locked Loop
 //=======================================================
 
 sys_pll  sys_pll_inst(
@@ -74,6 +85,53 @@ assign wshb_if_sdram.bte = '0 ;
 //------- Code Eleves ------
 //--------------------------
 
+always_comb 
+    LED[0] = KEY[0];
 
+// Synchronisation de pixel_clk
+always_ff @(posedge pixel_clk or posedge sys_rst)
+begin 
+    if(sys_rst)
+        begin
+        pixel_rst <= 1;
+        Q <= 1;
+        end
+    else begin
+        pixel_rst <= Q;
+        Q <= 0;
+    end
+end
+
+
+// Clignotage de LED[1] sur sys_clk
+always_ff @(posedge sys_clk or posedge sys_rst) begin // sys_clk à 100Mhz donc il faut multiplier la période par 100 000 000 pour avoir 1Hz donc on compte jusqu'à 99 999 999
+    if(sys_rst) 
+        begin
+            LED[1] = 0;
+            count <= 0;
+        end
+    else begin
+        count <= count + 1;
+        if(count == hcmpt) begin
+            count <= 0;
+            LED[1] <= ~LED[1];
+        end
+    end   
+end
+
+// Clignotage de LED[2] sur pixel_clk
+always_ff @(posedge pixel_clk or posedge pixel_rst) begin // sys_clk à 100Mhz donc il faut multiplier la période par 100 000 000 pour avoir 1Hz donc on compte jusqu'à 99 999 999
+    if(pixel_rst) begin
+            LED[1] = 0;
+            count_pix <= 0;
+    end
+    else begin
+        count_pix <= count_pix + 1;
+        if(count_pix == hcmpt) begin
+            count_pix <= 0;
+            LED[2] <= ~LED[2];
+        end
+    end   
+end
 
 endmodule
