@@ -1,12 +1,13 @@
 `default_nettype none
-`define SIMULATION
 `ifdef SIMULATION
   localparam hcmpt=100;
+  localparam hcmpt_pix=32;
 `else
   localparam hcmpt= 100000000;
+  localparam hcmpt_pix = 32000000;
 `endif
 
-module Top (
+module Top(
     // Les signaux externes de la partie FPGA
 	input  wire         FPGA_CLK1_50,
 	input  wire  [1:0]	KEY,
@@ -38,6 +39,7 @@ sys_pll  sys_pll_inst(
 		   .outclk_0(pixel_clk),    // horloge pixels a 32 Mhz
 		   .outclk_1(sys_clk)       // horloge systeme a 100MHz
 );
+
 
 //=============================
 //  Les bus Wishbone internes
@@ -102,12 +104,11 @@ begin
     end
 end
 
-
 // Clignotage de LED[1] sur sys_clk
 always_ff @(posedge sys_clk or posedge sys_rst) begin // sys_clk à 100Mhz donc il faut multiplier la période par 100 000 000 pour avoir 1Hz donc on compte jusqu'à 99 999 999
     if(sys_rst) 
         begin
-            LED[1] = 0;
+            LED[1] <= 0;
             count <= 0;
         end
     else begin
@@ -122,12 +123,12 @@ end
 // Clignotage de LED[2] sur pixel_clk
 always_ff @(posedge pixel_clk or posedge pixel_rst) begin // sys_clk à 100Mhz donc il faut multiplier la période par 100 000 000 pour avoir 1Hz donc on compte jusqu'à 99 999 999
     if(pixel_rst) begin
-            LED[1] = 0;
+            LED[2] <= 0;
             count_pix <= 0;
     end
     else begin
         count_pix <= count_pix + 1;
-        if(count_pix == hcmpt) begin
+        if(count_pix == hcmpt_pix) begin
             count_pix <= 0;
             LED[2] <= ~LED[2];
         end
