@@ -24,8 +24,8 @@ module Top(
   wire        sys_clk;   // L'horloge système a 100Mhz
   wire        pixel_clk; // L'horloge de la video 32 Mhz
   logic        pixel_rst;
-  logic[19:0] count;
-  logic[19:0] count_pix;
+  logic[26:0] count;
+  logic[26:0] count_pix;
   logic Q;
 
 
