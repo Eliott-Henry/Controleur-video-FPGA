@@ -4,6 +4,8 @@
 
 module tb_Top;
 
+video_if video_if0();
+
 // Entrées sorties extérieures
 bit   FPGA_CLK1_50; // Initié à 0, alors que les logics sont initialisés à X
 logic [1:0]	KEY;
@@ -14,7 +16,10 @@ logic [3:0]	SW;
 hws_if      hws_ifm();
 
 // Instance du module Top
-Top Top0(.*) ;
+Top #(.HDISP(160), .VDISP(90)) Top0(.FPGA_CLK1_50(FPGA_CLK1_50), .KEY(KEY), .LED(LED), .SW(SW), .hws_ifm(hws_ifm), .video_ifm(video_if0)) ;
+
+// Instance de module screen
+screen #(.mode(13),.X(160),.Y(90)) screen0(.video_ifs(video_if0));
 
 ///////////////////////////////
 //  Code élèves

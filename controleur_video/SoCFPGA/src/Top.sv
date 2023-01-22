@@ -14,8 +14,12 @@ module Top(
 	output logic [7:0]	LED,
 	input  wire	 [3:0]	SW,
     // Les signaux du support matériel sont regroupés dans une interface
-    hws_if.master       hws_ifm
+    hws_if.master       hws_ifm,
+    video_if.master video_ifm
 );
+
+parameter HDISP = 800;
+parameter VDISP = 480;
 
 //====================================
 //  Déclarations des signaux internes
@@ -86,6 +90,16 @@ assign wshb_if_sdram.bte = '0 ;
 //--------------------------
 //------- Code Eleves ------
 //--------------------------
+
+//---------------------------
+//------ Instance VGA -------
+//---------------------------
+
+vga #(.VDISP(VDISP), .HDISP(HDISP)) vga_inst(
+    .pixel_clk(pixel_clk),
+    .pixel_rst(pixel_rst),
+    .video_ifm(video_ifm)
+);
 
 always_comb 
     LED[0] = KEY[0];
