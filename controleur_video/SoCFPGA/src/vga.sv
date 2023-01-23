@@ -12,15 +12,6 @@ module vga #(parameter HDISP = 800, VDISP = 480)
     video_if.master video_ifm,
     wshb_if.master wshb_ifm);
 
-assign wshb_ifm.dat_ms = 32'hBABECAFE; //	Donnée 32 bits émises
-assign wshb_ifm.adr	= '0; //	Adresse d'écriture
-assign wshb_ifm.cyc	= 1'b1; //	Le bus est sélectionné
-assign wshb_ifm.sel	= 4'b1111; //	Les 4 octets sont à écrire
-assign wshb_ifm.stb	= 1'b1; //	Nous demandons une transaction
-assign wshb_ifm.we	=1'b1; //   Transaction en écriture
-assign wshb_ifm.cti	='0;//Transfert classique
-assign wshb_ifm.bte	= '0;	//sans utilité
-
 localparam number_lines = VFP + VPULSE + VBP + VDISP;
 localparam width_count_lines = $clog2(number_lines);
 
@@ -34,6 +25,8 @@ logic[width_count_lines-1:0] count_lines;
 // Coordonnées des pixels actifs
 logic[width_count_pix-1:0] x_pix;
 logic[width_count_lines-1:0] y_pix;
+
+logic[31:0] wshb_count;
 
 assign video_ifm.CLK = pixel_clk;
 
@@ -99,5 +92,31 @@ always@(posedge pixel_clk) begin
         video_ifm.RGB[23:16] <= 0;
     end
 end
+
+// Lecture Wishbone
+
+// Paramètre par défaut 
+
+assign wshb_ifm.cyc	= 1'b1; // Le bus est sélectionné
+assign wshb_ifm.we	= 1'b0; // Transaction en lecture
+assign wshb_ifm.stb	= 1'b1; //	Nous demandons une transaction
+
+assign wshb_ifm.sel	= 4'b1111; // Les 4 octets sont à écrire
+assign wshb_ifm.cti	='0; // Transfert classique
+assign wshb_ifm.bte	= '0;	// Sans utilité
+assign wshb_ifm.dat_ms = 32'hBABECAFE; // Inutile ici :	Donnée 32 bits émises
+
+// Gestion de adr : init à 0 et incrémenté si on a bien lu le précédent
+
+always_ff@(posedge wshb_ifm.clk or posedge wshb_ifm.rst)
+begin
+    if(wshb_ifm.rst) wshb_count <= 0;
+    else begin
+        if(wshb_count == HDISP * VDISP - 1) wshb_count <= 0;
+        else if(wshb_ifm.ack) wshb_count <= wshb_count + 1;
+    end
+end
+
+assign wshb_ifm.adr = wshb_count * 4;
 
 endmodule
