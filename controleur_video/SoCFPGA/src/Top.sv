@@ -78,6 +78,7 @@ assign wshb_if_stream.rty =  1'b0 ;
 // A SUPPRIMER PLUS TARD
 //=============================
 
+/*
 assign wshb_if_sdram.stb  = 1'b0;
 assign wshb_if_sdram.cyc  = 1'b0;
 assign wshb_if_sdram.we   = 1'b0;
@@ -85,7 +86,7 @@ assign wshb_if_sdram.adr  = '0  ;
 assign wshb_if_sdram.dat_ms = '0 ;
 assign wshb_if_sdram.sel = '0 ;
 assign wshb_if_sdram.cti = '0 ;
-assign wshb_if_sdram.bte = '0 ;
+assign wshb_if_sdram.bte = '0 ;*/
 
 //--------------------------
 //------- Code Eleves ------
@@ -98,8 +99,8 @@ assign wshb_if_sdram.bte = '0 ;
 vga #(.VDISP(VDISP), .HDISP(HDISP)) vga_inst(
     .pixel_clk(pixel_clk),
     .pixel_rst(pixel_rst),
-    .video_ifm(video_ifm)
-);
+    .video_ifm(video_ifm),
+    .wshb_ifm(wshb_if_sdram));
 
 always_comb 
     LED[0] = KEY[0];
@@ -107,15 +108,12 @@ always_comb
 // Synchronisation de pixel_clk
 always_ff @(posedge pixel_clk or posedge sys_rst)
 begin 
-    if(sys_rst)
-        begin
+    if(sys_rst) begin
         pixel_rst <= 1;
-        Q <= 1;
-        end
+        Q <= 1; end
     else begin
         pixel_rst <= Q;
-        Q <= 0;
-    end
+        Q <= 0; end
 end
 
 // Clignotage de LED[1] sur sys_clk

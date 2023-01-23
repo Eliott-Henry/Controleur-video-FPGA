@@ -9,7 +9,17 @@ localparam VBP = 29; // Vertical Back Porch	29	lignes
 module vga #(parameter HDISP = 800, VDISP = 480)
 (   input wire pixel_clk,
     input wire pixel_rst,
-    video_if.master video_ifm);
+    video_if.master video_ifm,
+    wshb_if.master wshb_ifm);
+
+assign wshb_ifm.dat_ms = 32'hBABECAFE; //	Donnée 32 bits émises
+assign wshb_ifm.adr	= '0; //	Adresse d'écriture
+assign wshb_ifm.cyc	= 1'b1; //	Le bus est sélectionné
+assign wshb_ifm.sel	= 4'b1111; //	Les 4 octets sont à écrire
+assign wshb_ifm.stb	= 1'b1; //	Nous demandons une transaction
+assign wshb_ifm.we	=1'b1; //   Transaction en écriture
+assign wshb_ifm.cti	='0;//Transfert classique
+assign wshb_ifm.bte	= '0;	//sans utilité
 
 localparam number_lines = VFP + VPULSE + VBP + VDISP;
 localparam width_count_lines = $clog2(number_lines);
