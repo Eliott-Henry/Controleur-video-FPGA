@@ -43,6 +43,10 @@ logic fifo_write; // à définir
 logic fifo_wfull; // output
 logic fifo_walmost_full; // output
 
+
+logic fifo_has_been_full_wshb;
+logic fifo_has_been_full_pix;
+
 // ----------------------------------------------
 
 assign video_ifm.CLK = pixel_clk;
@@ -96,7 +100,8 @@ x_pix = count_pix - (HFP + HPULSE + HBP);
 y_pix = count_lines - (VFP + VPULSE + VBP);
 end
 
-// Gestion de la couleur des pixels
+/*
+// Gestion de la couleur des pixels pour la mire
 always@(posedge pixel_clk) begin
     if((x_pix[3:0] == 0) | (y_pix[3:0] == 0)) begin
         video_ifm.RGB[7:0] <= 255;
@@ -108,6 +113,31 @@ always@(posedge pixel_clk) begin
         video_ifm.RGB[15:8] <= 0;
         video_ifm.RGB[23:16] <= 0;
     end
+end */
+
+// 
+
+always@(posedge pixel_clk or posedge pixel_rst) begin
+    if(pixel_rst) video_ifm.RGB <= 0;
+    else if(fifo_read) begin
+        video_ifm.RGB[7:0] <= fifo_rdata[7:0];
+        video_ifm.RGB[15:8] <= fifo_rdata[15:8];
+        video_ifm.RGB[23:16] <= fifo_rdata[23:16];
+    end  
+end 
+
+logic Q_pix;
+
+// Echantillonage de fifo_has_been_full_wshb dans le domaine pixel_clk
+always@(posedge pixel_clk or posedge pixel_rst) begin 
+    if(pixel_rst) Q_pix <= 0;
+    else Q_pix <= fifo_has_been_full_wshb;
+end
+
+// Gestion de fifo_has_been_full_pix
+always@(posedge pixel_clk or posedge pixel_rst) begin 
+    if(pixel_rst) fifo_has_been_full_pix <= 0;
+    else fifo_has_been_full_pix <= Q_pix;
 end
 
 // Lecture Wishbone
@@ -143,8 +173,17 @@ assign wshb_ifm.adr = wshb_count * 4;
 assign fifo_rst = wshb_ifm.rst;
 assign fifo_wclk = wshb_ifm.clk;
 assign fifo_wdata = wshb_ifm.dat_sm;
-assign fifo_write = wshb_ifm.ack; // Si la FIFO est pleine, ne demande pas l'écriture
-// Est-ce que c'est bien ça qu'il faut faire ou mettre write à 1 tout le temps, et faire dépendre le compteur de lecture d'adress de fifo_full ?
+assign fifo_write = wshb_ifm.ack; // On écrit dans la fifo dès qu'on a une nouvelle valeur à présenter
+
+assign fifo_rclk = pixel_clk;
+assign fifo_read = video_ifm.BLANK & fifo_has_been_full_pix & ~fifo_rempty;
+
+// Gestion du signal qui indique si la FIFO a déjà été remplie avant de lire les pixels
+always@(posedge fifo_wclk or posedge fifo_rst)
+begin
+    if(fifo_rst) fifo_has_been_full_wshb <= 0;
+    else if(fifo_wfull) fifo_has_been_full_wshb <= 1;
+end
 
 // -------------- INSTANCIATION DE LA FIFO ------------------- //
 
@@ -160,6 +199,5 @@ async_fifo #(.DATA_WIDTH(32), .DEPTH_WIDTH(8)) async_fifo_inst (
     .wfull(fifo_wfull),
     .walmost_full(fifo_walmost_full)
 );
-
 
 endmodule
