@@ -116,7 +116,7 @@ end
 
 assign wshb_ifm.cyc	= 1'b1; // Le bus est sélectionné
 assign wshb_ifm.we	= 1'b0; // Transaction en lecture
-assign wshb_ifm.stb	= 1'b1; //	Nous demandons une transaction
+assign wshb_ifm.stb	= ~fifo_wfull; //	Nous demandons une transaction lorsque la FIFO n'est pleine
 
 assign wshb_ifm.sel	= 4'b1111; // Les 4 octets sont à écrire
 assign wshb_ifm.cti	='0; // Transfert classique
@@ -143,7 +143,7 @@ assign wshb_ifm.adr = wshb_count * 4;
 assign fifo_rst = wshb_ifm.rst;
 assign fifo_wclk = wshb_ifm.clk;
 assign fifo_wdata = wshb_ifm.dat_sm;
-assign fifo_write = ~fifo_wfull; // Si la FIFO est pleine, ne demande pas l'écriture
+assign fifo_write = wshb_ifm.ack; // Si la FIFO est pleine, ne demande pas l'écriture
 // Est-ce que c'est bien ça qu'il faut faire ou mettre write à 1 tout le temps, et faire dépendre le compteur de lecture d'adress de fifo_full ?
 
 // -------------- INSTANCIATION DE LA FIFO ------------------- //
