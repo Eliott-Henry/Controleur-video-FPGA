@@ -101,30 +101,19 @@ y_pix = count_lines - (VFP + VPULSE + VBP);
 end
 
 /*
-// Gestion de la couleur des pixels pour la mire
-always@(posedge pixel_clk) begin
-    if((x_pix[3:0] == 0) | (y_pix[3:0] == 0)) begin
-        video_ifm.RGB[7:0] <= 255;
-        video_ifm.RGB[15:8] <= 255;
-        video_ifm.RGB[23:16] <= 255;
-    end
-    else begin
-        video_ifm.RGB[7:0] <= 0;
-        video_ifm.RGB[15:8] <= 0;
-        video_ifm.RGB[23:16] <= 0;
-    end
-end */
-
-// 
-
 always@(posedge pixel_clk or posedge pixel_rst) begin
     if(pixel_rst) video_ifm.RGB <= 0;
     else if(fifo_read) begin
         video_ifm.RGB[7:0] <= fifo_rdata[7:0];
         video_ifm.RGB[15:8] <= fifo_rdata[15:8];
         video_ifm.RGB[23:16] <= fifo_rdata[23:16];
-    end  
-end 
+    end
+end*/
+
+assign video_ifm.RGB = fifo_rdata;
+
+
+// ------------ Gestion des différentes domaines d'horloge ------------- //
 
 logic Q_pix;
 
@@ -140,12 +129,12 @@ always@(posedge pixel_clk or posedge pixel_rst) begin
     else fifo_has_been_full_pix <= Q_pix;
 end
 
-// Lecture Wishbone
+// ------------ Lecture Wishbone ----------- //
 
-// Paramètre par défaut 
-
-assign wshb_ifm.cyc	= 1'b1; // Le bus est sélectionné
-assign wshb_ifm.we	= 1'b0; // Transaction en lecture
+// Dans cette partie, le bus Wishbone lit des données en SDRAM //
+    
+assign wshb_ifm.cyc	= wshb_ifm.stb; // Le bus est sélectionné
+assign wshb_ifm.we	= 1'b0; // Transaction en lecture à chaque fois
 assign wshb_ifm.stb	= ~fifo_wfull; //	Nous demandons une transaction lorsque la FIFO n'est pleine
 
 assign wshb_ifm.sel	= 4'b1111; // Les 4 octets sont à écrire
@@ -159,9 +148,9 @@ always_ff@(posedge wshb_ifm.clk or posedge wshb_ifm.rst)
 begin
     if(wshb_ifm.rst) wshb_count <= 0;
     else begin
-        if(fifo_write) begin
+        if(wshb_ifm.ack) begin
             if(wshb_count == HDISP * VDISP - 1) wshb_count <= 0;
-            else if(wshb_ifm.ack) wshb_count <= wshb_count + 1; end
+            else wshb_count <= wshb_count + 1; end
     end
 end
 
@@ -177,6 +166,7 @@ assign fifo_write = wshb_ifm.ack; // On écrit dans la fifo dès qu'on a une nou
 
 assign fifo_rclk = pixel_clk;
 assign fifo_read = video_ifm.BLANK & fifo_has_been_full_pix & ~fifo_rempty;
+
 
 // Gestion du signal qui indique si la FIFO a déjà été remplie avant de lire les pixels
 always@(posedge fifo_wclk or posedge fifo_rst)

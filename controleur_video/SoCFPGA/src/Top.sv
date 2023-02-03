@@ -30,7 +30,6 @@ module Top#(parameter HDISP = 800, VDISP = 480)(
   logic[26:0] count_pix;
   logic Q;
 
-
 //=======================================================
 //  La PLL pour la génération des horloges == Phase-Locked Loop
 //=======================================================
@@ -42,12 +41,14 @@ sys_pll  sys_pll_inst(
 		   .outclk_1(sys_clk)       // horloge systeme a 100MHz
 );
 
-
 //=============================
 //  Les bus Wishbone internes
 //=============================
 wshb_if #( .DATA_BYTES(4)) wshb_if_sdram  (sys_clk, sys_rst);
 wshb_if #( .DATA_BYTES(4)) wshb_if_stream (sys_clk, sys_rst);
+
+wshb_if #( .DATA_BYTES(4)) wshb_if_mire  (sys_clk, sys_rst);
+wshb_if #( .DATA_BYTES(4)) wshb_if_vga (sys_clk, sys_rst);
 
 //=============================
 //  Le support matériel
@@ -92,6 +93,25 @@ assign wshb_if_sdram.bte = '0 ;*/
 //------- Code Eleves ------
 //--------------------------
 
+
+// -----------------------
+// ----- Instance mire ---
+// -----------------------
+
+mire #(.VDISP(VDISP), .HDISP(HDISP)) mire_inst (
+    .wshb_ifm(wshb_if_mire)
+);
+
+// ------------------------------------
+// ------ Instance wshb_intercon ------
+// ------------------------------------
+
+wshb_intercon wshb_intercon_inst(
+    .wshb_ifs_mire(wshb_if_mire),
+    .wshb_ifs_vga(wshb_if_vga),
+    .wshb_ifm(wshb_if_sdram)
+);
+
 //---------------------------
 //------ Instance VGA -------
 //---------------------------
@@ -100,7 +120,11 @@ vga #(.VDISP(VDISP), .HDISP(HDISP)) vga_inst(
     .pixel_clk(pixel_clk),
     .pixel_rst(pixel_rst),
     .video_ifm(video_ifm),
-    .wshb_ifm(wshb_if_sdram));
+    .wshb_ifm(wshb_if_vga));
+
+
+/// Traitement des LEDS
+
 
 always_comb 
     LED[0] = KEY[0];
@@ -113,7 +137,8 @@ begin
         Q <= 1; end
     else begin
         pixel_rst <= Q;
-        Q <= 0; end
+        Q <= 0; 
+    end
 end
 
 // Clignotage de LED[1] sur sys_clk
