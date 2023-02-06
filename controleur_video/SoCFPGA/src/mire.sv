@@ -11,20 +11,15 @@ localparam width_count_pix = $clog2(HDISP);
 logic[width_count_pix-1:0] x_pix;
 logic[width_count_lines-1:0] y_pix;
 logic[5:0] count_cycles; // Compteur de cycles saturé à 64 : sert à mettre périodiquement des signaux à 0
-logic has_written;
-
-// Gestion de has_written : il s'active si on a fini d'écrire
-always@(posedge wshb_ifm.clk or posedge wshb_ifm.rst)
-begin
-    if(wshb_ifm.rst) has_written <= 0;
-    else if((x_pix == HDISP - 1) & (y_pix == VDISP - 1) & wshb_ifm.ack) has_written <= 1;
-end
 
 // Compteur de cycles
 always@(posedge wshb_ifm.clk or posedge wshb_ifm.rst)
 begin 
     if(wshb_ifm.rst) count_cycles <= 0;
-    else count_cycles <= count_cycles + 1;
+    else if(count_cycles == 63) begin
+        if(wshb_ifm.ack) count_cycles <= count_cycles + 1;end
+    else 
+        count_cycles <= count_cycles + 1;
 end
 
 // Compteur de pixels de 0 à HDISP-1
@@ -49,7 +44,6 @@ begin
     end
 end
 
-
 // Gestion asynchrone de dat_ms
 always_comb
 begin 
@@ -69,10 +63,6 @@ assign wshb_ifm.adr = 4*(x_pix + y_pix*HDISP);
 // Signaux à 0 tous les 64 cycles
 assign wshb_ifm.cyc = ~(count_cycles == 0); 
 assign wshb_ifm.stb = ~(count_cycles == 0);
-
-// Signaux à 0 tous les 64 cycles si on a fini d'écrire au moins une fois
-//assign wshb_ifm.cyc = ~((count_cycles == 0) & has_written); 
-//assign wshb_ifm.stb = ~((count_cycles == 0) & has_written);
 
 // Neutralisation de l'écriture en RAM pour test
 //assign wshb_ifm.stb = 0;
