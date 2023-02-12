@@ -100,16 +100,6 @@ x_pix = count_pix - (HFP + HPULSE + HBP);
 y_pix = count_lines - (VFP + VPULSE + VBP);
 end
 
-/*
-always@(posedge pixel_clk or posedge pixel_rst) begin
-    if(pixel_rst) video_ifm.RGB <= 0;
-    else if(fifo_read) begin
-        video_ifm.RGB[7:0] <= fifo_rdata[7:0];
-        video_ifm.RGB[15:8] <= fifo_rdata[15:8];
-        video_ifm.RGB[23:16] <= fifo_rdata[23:16];
-    end
-end*/
-
 assign video_ifm.RGB = fifo_rdata;
 
 
@@ -132,10 +122,23 @@ end
 // ------------ Lecture Wishbone ----------- //
 
 // Dans cette partie, le bus Wishbone lit des données en SDRAM //
-    
-assign wshb_ifm.cyc	= wshb_ifm.stb; // Le bus est sélectionné
+
+// Gestion de cyc    
+always@(posedge pixel_clk or posedge pixel_rst)
+begin
+    if(pixel_rst) wshb_ifm.cyc <= 1;
+    else begin
+        if(~fifo_walmost_full) wshb_ifm.cyc <= 1;
+        if(fifo_wfull) wshb_ifm.cyc <= 0;
+    end
+end
+
+// Le bus est sélectionné
+// Idée de possibiltés pour régler : 
+// Augmenter la taille de la fenêtre de walmostfull
+// regarder les signaux fifo_wfull (synchrone, asynchrone etc) : et ce qu'il a du retard ,
 assign wshb_ifm.we	= 1'b0; // Transaction en lecture à chaque fois
-assign wshb_ifm.stb	= ~fifo_wfull; //	Nous demandons une transaction lorsque la FIFO n'est pleine
+assign wshb_ifm.stb	= wshb_ifm.cyc & ~fifo_wfull; //	Nous demandons une transaction lorsque la FIFO n'est pleine
 
 assign wshb_ifm.sel	= 4'b1111; // Les 4 octets sont à écrire
 assign wshb_ifm.cti	='0; // Transfert classique
